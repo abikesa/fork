@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hades@Jupyter Desktop - Directory Explorer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            background: linear-gradient(135deg, #0f0f0f 0%, #1a1a2e 50%, #16213e 100%);
+            color: #00ff41;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .terminal-container {
+            position: relative;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .terminal-header {
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #00ff41;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 0 20px rgba(0, 255, 65, 0.3);
+            animation: glitch 3s infinite;
+        }
+
+        @keyframes glitch {
+            0%, 100% { transform: translate(0); }
+            20% { transform: translate(-1px, 1px); }
+            40% { transform: translate(-1px, -1px); }
+            60% { transform: translate(1px, 1px); }
+            80% { transform: translate(1px, -1px); }
+        }
+
+        .prompt {
+            color: #ff6b6b;
+            text-shadow: 0 0 10px rgba(255, 107, 107, 0.5);
+        }
+
+        .directory-structure {
+            background: rgba(0, 0, 0, 0.9);
+            border: 1px solid #00ff41;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            font-size: 14px;
+            line-height: 1.6;
+            box-shadow: inset 0 0 20px rgba(0, 255, 65, 0.1);
+        }
+
+        .file-item {
+            display: flex;
+            align-items: center;
+            padding: 8px 12px;
+            margin: 5px 0;
+            background: rgba(0, 255, 65, 0.05);
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border-left: 3px solid transparent;
+        }
+
+        .file-item:hover {
+            background: rgba(0, 255, 65, 0.15);
+            border-left-color: #00ff41;
+            transform: translateX(5px);
+        }
+
+        .file-icon {
+            width: 20px;
+            height: 20px;
+            margin-right: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+        }
+
+        .pdf-file { color: #ff4757; }
+        .html-file { color: #ffa502; }
+        .executable { color: #00ff41; }
+
+        .file-size {
+            margin-left: auto;
+            color: #7f8c8d;
+            font-size: 12px;
+        }
+
+        .compute-status {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            text-align: center;
+            box-shadow: 0 0 20px rgba(255, 107, 107, 0.3);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.7; }
+            50% { opacity: 1; }
+        }
+
+        .pdf-viewer {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            z-index: 1000;
+            display: none;
+            flex-direction: column;
+        }
+
+        .pdf-controls {
+            background: rgba(0, 0, 0, 0.9);
+            padding: 15px;
+            border-bottom: 2px solid #00ff41;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .pdf-frame {
+            flex: 1;
+            border: none;
+            background: white;
+        }
+
+        .btn {
+            background: linear-gradient(45deg, #00ff41, #00d4aa);
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            margin: 0 5px;
+        }
+
+        .btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 15px rgba(0, 255, 65, 0.5);
+        }
+
+        .close-btn {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+            color: white;
+        }
+
+        .github-access {
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #00ff41;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: center;
+        }
+
+        .github-url {
+            background: rgba(0, 255, 65, 0.1);
+            border: 1px solid #00ff41;
+            border-radius: 5px;
+            padding: 10px;
+            margin: 10px 0;
+            font-family: inherit;
+            color: #00ff41;
+            width: 100%;
+        }
+
+        .matrix-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            overflow: hidden;
+        }
+
+        .matrix-char {
+            position: absolute;
+            color: #00ff41;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            animation: matrix-fall linear infinite;
+            opacity: 0.3;
+        }
+
+        @keyframes matrix-fall {
+            0% { transform: translateY(-100vh); opacity: 0.8; }
+            100% { transform: translateY(100vh); opacity: 0; }
+        }
+
+        .failed-compute {
+            background: rgba(255, 107, 107, 0.1);
+            border: 1px solid #ff6b6b;
+            border-radius: 5px;
+            padding: 10px;
+            margin: 10px 0;
+            text-align: center;
+            color: #ff6b6b;
+        }
+
+        .access-portal {
+            background: linear-gradient(45deg, #667eea 0%, #764ba2 100%);
+            border-radius: 15px;
+            padding: 25px;
+            margin: 20px 0;
+            text-align: center;
+            color: white;
+            box-shadow: 0 0 30px rgba(102, 126, 234, 0.3);
+        }
+
+        .portal-btn {
+            background: linear-gradient(45deg, #ffeaa7, #fab1a0);
+            color: #2d3436;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 16px;
+            margin: 10px;
+            transition: all 0.3s ease;
+        }
+
+        .portal-btn:hover {
+            transform: scale(1.1) rotate(2deg);
+            box-shadow: 0 0 20px rgba(255, 234, 167, 0.5);
+        }
+    </style>
+</head>
+<body>
+    <div class="matrix-bg" id="matrixBg"></div>
+    
+    <div class="terminal-container">
+        <div class="terminal-header">
+            <div class="prompt">hades@Jupyter Desktop %</div>
+            <div style="margin-top: 10px;">
+                <span style="color: #00ff41;">ls -l</span> → Directory exploration initialized...
+            </div>
+        </div>
+
+        <div class="compute-status">
+            ⚠️ INSUFFICIENT COMPUTE DETECTED ⚠️<br>
+            <span style="font-size: 14px;">Failed renders from GPT, Claude, Grok, DeepSeek...</span>
+        </div>
+
+        <div class="directory-structure">
+            <div style="color: #00ff41; font-weight: bold; margin-bottom: 15px;">
+                total 2752 bytes - Directory Contents:
+            </div>
+            
+            <div class="file-item" onclick="showFailedCompute('deepseek')">
+                <div class="file-icon html-file">🌐</div>
+                <div>deepseek.html</div>
+                <div class="file-size">12,367 bytes</div>
+            </div>
+            
+            <div class="file-item" onclick="openPDF('dialogue-30')">
+                <div class="file-icon pdf-file">📄</div>
+                <div>dialogue-30.pdf</div>
+                <div class="file-size">73,890 bytes</div>
+            </div>
+            
+            <div class="file-item" onclick="openPDF('dialogue-5-percent')">
+                <div class="file-icon pdf-file">📄</div>
+                <div>dialogue-5-percent.pdf</div>
+                <div class="file-size">96,497 bytes</div>
+            </div>
+            
+            <div class="file-item" onclick="openPDF('dialogue-99-percent')">
+                <div class="file-icon pdf-file">📄</div>
+                <div>dialogue-99-percent.pdf</div>
+                <div class="file-size">324,003 bytes</div>
+            </div>
+            
+            <div class="file-item" onclick="openPDF('dialogue')">
+                <div class="file-icon pdf-file">📄</div>
+                <div><strong>dialogue.pdf</strong> ⭐ [MAIN CONTENT]</div>
+                <div class="file-size">866,600 bytes</div>
+            </div>
+            
+            <div class="file-item" onclick="showFailedCompute('grok-delusions')">
+                <div class="file-icon html-file">🌐</div>
+                <div>grok-delusions.html</div>
+                <div class="file-size">10,546 bytes</div>
+            </div>
+            
+            <div class="file-item" onclick="showFailedCompute('grok')">
+                <div class="file-icon html-file">🌐</div>
+                <div>grok.html</div>
+                <div class="file-size">5,098 bytes</div>
+            </div>
+        </div>
+
+        <div class="access-portal">
+            <h2>🚀 GitHub Pages Access Portal</h2>
+            <p>Deploy this structure to GitHub Pages for seamless PDF access</p>
+            
+            <div class="github-access">
+                <h3>Setup Instructions:</h3>
+                <div style="text-align: left; margin: 15px 0;">
+                    1. Create a new repository: <code>hades-desktop-explorer</code><br>
+                    2. Upload all files to the repository<br>
+                    3. Enable GitHub Pages in repository settings<br>
+                    4. Access via: <code>https://yourusername.github.io/hades-desktop-explorer/</code>
+                </div>
+                
+                <input type="text" class="github-url" placeholder="Enter your GitHub Pages URL here..." id="githubUrl">
+                <button class="portal-btn" onclick="launchGitHubPages()">🎯 Launch Portal</button>
+            </div>
+        </div>
+
+        <div class="failed-compute" id="failedCompute" style="display: none;">
+            <h3>⚠️ FAILED COMPUTE ARTIFACT</h3>
+            <p id="failedMessage"></p>
+            <button class="btn" onclick="hideFailedCompute()">Close</button>
+        </div>
+    </div>
+
+    <div class="pdf-viewer" id="pdfViewer">
+        <div class="pdf-controls">
+            <div>
+                <span id="pdfTitle" style="color: #00ff41; font-weight: bold;">PDF Viewer</span>
+                <span style="margin-left: 20px; color: #7f8c8d;">GitHub Pages Backend Access</span>
+            </div>
+            <div>
+                <button class="btn" onclick="downloadPDF()">📥 Download</button>
+                <button class="btn" onclick="openInNewTab()">🔗 Open in New Tab</button>
+                <button class="btn close-btn" onclick="closePDF()">✕ Close</button>
+            </div>
+        </div>
+        <iframe class="pdf-frame" id="pdfFrame" src=""></iframe>
+    </div>
+
+    <script>
+        // Matrix background effect
+        function createMatrixRain() {
+            const chars = '01アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン';
+            const matrixBg = document.getElementById('matrixBg');
+            
+            for (let i = 0; i < 50; i++) {
+                const char = document.createElement('div');
+                char.className = 'matrix-char';
+                char.textContent = chars[Math.floor(Math.random() * chars.length)];
+                char.style.left = Math.random() * 100 + '%';
+                char.style.animationDuration = (Math.random() * 3 + 2) + 's';
+                char.style.animationDelay = Math.random() * 2 + 's';
+                matrixBg.appendChild(char);
+            }
+        }
+
+        let currentPDF = '';
+        let githubBaseUrl = '';
+
+        function openPDF(filename) {
+            const viewer = document.getElementById('pdfViewer');
+            const frame = document.getElementById('pdfFrame');
+            const title = document.getElementById('pdfTitle');
+            
+            currentPDF = filename;
+            title.textContent = filename + '.pdf';
+            
+            // If GitHub Pages URL is set, use it
+            if (githubBaseUrl) {
+                frame.src = githubBaseUrl + '/' + filename + '.pdf';
+            } else {
+                // Fallback to Google Docs viewer (requires public URLs)
+                frame.src = `https://docs.google.com/viewer?url=${encodeURIComponent(window.location.origin + '/' + filename + '.pdf')}&embedded=true`;
+            }
+            
+            viewer.style.display = 'flex';
+        }
+
+        function closePDF() {
+            document.getElementById('pdfViewer').style.display = 'none';
+        }
+
+        function downloadPDF() {
+            if (currentPDF) {
+                const link = document.createElement('a');
+                link.href = currentPDF + '.pdf';
+                link.download = currentPDF + '.pdf';
+                link.click();
+            }
+        }
+
+        function openInNewTab() {
+            if (currentPDF) {
+                const url = githubBaseUrl ? githubBaseUrl + '/' + currentPDF + '.pdf' : currentPDF + '.pdf';
+                window.open(url, '_blank');
+            }
+        }
+
+        function showFailedCompute(filename) {
+            const failedDiv = document.getElementById('failedCompute');
+            const message = document.getElementById('failedMessage');
+            
+            const messages = {
+                'deepseek': 'DeepSeek compute failed - insufficient processing power for complex renders',
+                'grok-delusions': 'Grok delusions detected - hallucinated output, compute terminated',
+                'grok': 'Grok base model failed - unable to process requested complexity'
+            };
+            
+            message.textContent = messages[filename] || 'Unknown compute failure';
+            failedDiv.style.display = 'block';
+            
+            setTimeout(() => {
+                failedDiv.style.display = 'none';
+            }, 3000);
+        }
+
+        function hideFailedCompute() {
+            document.getElementById('failedCompute').style.display = 'none';
+        }
+
+        function launchGitHubPages() {
+            const url = document.getElementById('githubUrl').value.trim();
+            if (url) {
+                githubBaseUrl = url.replace(/\/$/, ''); // Remove trailing slash
+                alert('🚀 GitHub Pages portal configured!\nPDF access will now route through: ' + githubBaseUrl);
+            } else {
+                alert('Please enter your GitHub Pages URL first!');
+            }
+        }
+
+        // Initialize matrix background
+        createMatrixRain();
+        
+        // Add some dynamic effects
+        setInterval(() => {
+            const chars = document.querySelectorAll('.matrix-char');
+            chars.forEach(char => {
+                if (Math.random() < 0.1) {
+                    char.textContent = Math.random() > 0.5 ? '1' : '0';
+                }
+            });
+        }, 500);
+
+        // Terminal typing effect
+        function typeWriter(element, text, speed = 50) {
+            let i = 0;
+            function type() {
+                if (i < text.length) {
+                    element.innerHTML += text.charAt(i);
+                    i++;
+                    setTimeout(type, speed);
+                }
+            }
+            type();
+        }
+
+        // Add glitch effect to random elements
+        setInterval(() => {
+            const fileItems = document.querySelectorAll('.file-item');
+            const randomItem = fileItems[Math.floor(Math.random() * fileItems.length)];
+            randomItem.style.animation = 'glitch 0.3s ease-out';
+            setTimeout(() => {
+                randomItem.style.animation = '';
+            }, 300);
+        }, 5000);
+
+        console.log('🔥 Hades Desktop Explorer initialized');
+        console.log('�� Directory structure loaded');
+        console.log('🚀 GitHub Pages portal ready');
+        console.log('⚠️ Failed compute artifacts detected');
+    </script>
+</body>
+</html>
