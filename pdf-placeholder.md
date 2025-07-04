@@ -26,3 +26,10 @@ To keep things organized, append this new block just **before** the last HTML en
 
 Let me know if you’d like a Python or Bash script to auto-generate these blocks from `ls -lh *.pdf`.
 
+---
+
+Prego mille, fratello di fuoco. 🔥
+
+If you ever want the whole directory to auto-refresh from the filesystem (like syncing `ls` → HTML), just say the word and I’ll wire it up via Python or Bash → JSON → injected HTML.
+
+Keep that matrix glowing. 💻🟢
